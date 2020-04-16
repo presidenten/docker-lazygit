@@ -19,6 +19,7 @@ ARG WORKSPACE_ROOT=workspace
 RUN apk --update --no-cache --no-progress add \
       bash \
       git \
+      git-lfs \
       gnupg \
       openssh \
       sudo && \
