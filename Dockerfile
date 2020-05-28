@@ -1,5 +1,4 @@
 FROM alpine:3.11 as builder
-LABEL maintainer "Takashi Makimoto <mackie@beehive-dev.com>"
 
 RUN apk --update --no-cache --no-progress add \
       git \
@@ -8,13 +7,14 @@ RUN apk --update --no-cache --no-progress add \
 RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin && \
     go get github.com/jesseduffield/lazygit
 
+# -------------------------------------------
 
 FROM alpine:3.11
-LABEL maintainer "Takashi Makimoto <mackie@beehive-dev.com>"
 
-ARG USER_NAME=mackie
-ARG USER_ID=1000
-ARG WORKSPACE_ROOT=workspace
+ARG USER_NAME=user
+ARG USER_UID=1001
+ARG USER_GID=1001
+ARG WORKSPACE_ROOT=/app
 
 RUN apk --update --no-cache --no-progress add \
       bash \
@@ -23,7 +23,8 @@ RUN apk --update --no-cache --no-progress add \
       gnupg \
       openssh \
       sudo && \
-    adduser -D -u ${USER_ID} ${USER_NAME} ${USER_NAME} && \
+    addgroup -S -g ${USER_GID} ${USER_NAME} && \
+    adduser -D -u ${USER_UID} -G ${USER_NAME} ${USER_NAME} && \
     echo "${USER_NAME}:${USER_NAME}" | chpasswd && \
     addgroup -g 150 sudo && \
     addgroup ${USER_NAME} sudo && \
@@ -34,13 +35,15 @@ COPY --from=builder /root/go/bin/lazygit /usr/local/bin/lazygit
 COPY run.sh /usr/local/bin/run.sh
 COPY config.yml /home/${USER_NAME}/.config/jesseduffield/lazygit/config.yml
 
-RUN chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME}/.config
+RUN mkdir -p /home/${USER_NAME}/.config/git && \
+    mkdir -p ${WORKSPACE_ROOT} && \
+    chown -R ${USER_NAME}:${USER_NAME} /app && \
+    chown -R ${USER_NAME}:${USER_NAME} /home/${USER_NAME}/.config && \
+    chmod -R 777 ${WORKSPACE_ROOT} && \
+    chmod -R 777 /home/${USER_NAME}/.config
 
-USER ${USER_ID}
-WORKDIR /home/${USER_NAME}
+WORKDIR ${WORKSPACE_ROOT}
 
-RUN mkdir -p /home/${USER_NAME}/.config/git
-
-WORKDIR /home/${USER_NAME}/workspace
+USER ${USER_UID}
 
 ENTRYPOINT ["run.sh"]
