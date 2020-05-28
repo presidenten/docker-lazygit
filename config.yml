@@ -1,2 +1,4 @@
 reporting: "off"
 startuppopupversion: 1
+update:
+  method: never
